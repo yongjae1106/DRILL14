@@ -1,3 +1,5 @@
+from math import cos, pi
+
 from pico2d import load_image, get_canvas_width
 
 import game_framework
@@ -63,6 +65,17 @@ FLY_SPEED_PPS = (FLY_SPEED_MPS * PIXEL_PER_METER)          # 약 185 px/s
 # 부리 끝이 화면 가장자리에 닿는 순간 방향을 바꾸기 위해 사용한다.
 BEAK_LENGTH_PX = 57 * BIRD_SCALE
 
+# 날갯짓 동기화 상하 움직임(bob)
+# 날개를 내려칠 때(프레임 3~7) 양력이 생겨 몸이 올라가고, 날개를 들어올릴 때
+# (프레임 10~13, 0) 몸이 내려간다. 시트 자체의 몸통 위치 차이는 앵커 보정으로
+# 없앴으므로, 물리적으로 맞는 움직임을 프레임 값에 동기화해서 다시 넣는다.
+#   bob = -BOB_AMPLITUDE * cos(2π (frame - LOWEST_FRAME) / 14)
+#   -> frame = 0.5(날개 최고점, 내려치기 직전)에서 가장 낮고
+#      frame = 7.5(내려치기 끝)에서 가장 높다.
+# frame 이 실수이므로 프레임 경계에서도 끊기지 않고 부드럽게 움직인다.
+BOB_AMPLITUDE_PX = 0.12 * PIXEL_PER_METER    # 12cm -> 4px
+BOB_LOWEST_FRAME = 0.5
+
 
 class Bird:
     image = None
@@ -97,7 +110,8 @@ class Bird:
         # 그림이 뒤집히면 눈에서 사각형 중심까지의 가로 오프셋도 뒤집혀야 하므로
         # ox 에 dir 을 곱한다. (크기를 줄인 만큼 오프셋도 BIRD_SCALE 배)
         flip = '' if self.dir == 1 else 'h'
+        bob = -BOB_AMPLITUDE_PX * cos(2 * pi * (self.frame - BOB_LOWEST_FRAME) / FRAMES_PER_ACTION)
         Bird.image.clip_composite_draw(
             left, bottom, w, h, 0, flip,
-            self.x + self.dir * ox * BIRD_SCALE, self.y + oy * BIRD_SCALE,
+            self.x + self.dir * ox * BIRD_SCALE, self.y + bob + oy * BIRD_SCALE,
             w * BIRD_SCALE, h * BIRD_SCALE)
