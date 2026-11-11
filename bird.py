@@ -1,4 +1,4 @@
-from pico2d import load_image
+from pico2d import load_image, get_canvas_width
 
 import game_framework
 
@@ -52,23 +52,51 @@ BIRD_SCALE = BIRD_SIZE_M * PIXEL_PER_METER / BIRD_BODY_PX_IN_SHEET
 FLAPS_PER_SECOND = 2.0
 FRAMES_PER_SECOND = FLAPS_PER_SECOND * FRAMES_PER_ACTION   # 28 fps
 
+# 비행 속도: 20 km/h -> m/s -> px/s  (boy.py 의 RUN_SPEED 계산과 같은 방식)
+FLY_SPEED_KMPH = 20.0
+FLY_SPEED_MPM = (FLY_SPEED_KMPH * 1000.0 / 60.0)
+FLY_SPEED_MPS = (FLY_SPEED_MPM / 60.0)
+FLY_SPEED_PPS = (FLY_SPEED_MPS * PIXEL_PER_METER)          # 약 185 px/s
+
+# 앵커(눈)에서 부리 끝까지의 거리. 시트에서 0번 프레임 기준
+# 사각형 오른쪽 끝(중심 + 73) - 눈(중심 + 16) = 57px.
+# 부리 끝이 화면 가장자리에 닿는 순간 방향을 바꾸기 위해 사용한다.
+BEAK_LENGTH_PX = 57 * BIRD_SCALE
+
 
 class Bird:
     image = None
 
-    def __init__(self, x=800, y=400):
+    def __init__(self, x=800, y=400, dir=1):
         if Bird.image is None:
             Bird.image = load_image('bird_animation.png')
         self.x, self.y = x, y
+        self.dir = dir          # 1: 오른쪽, -1: 왼쪽
         self.frame = 0.0
 
     def update(self):
-        self.frame = (self.frame + FRAMES_PER_SECOND * game_framework.frame_time) % FRAMES_PER_ACTION
+        dt = game_framework.frame_time
+        self.frame = (self.frame + FRAMES_PER_SECOND * dt) % FRAMES_PER_ACTION
+        self.x += self.dir * FLY_SPEED_PPS * dt
+
+        # 좌우 반복 비행: 부리 끝이 화면 끝에 닿으면 방향 전환.
+        # 한 프레임에 경계를 넘어간 만큼은 반대쪽으로 되돌려(반사) 위치 오차를 없앤다.
+        left_limit = BEAK_LENGTH_PX
+        right_limit = get_canvas_width() - BEAK_LENGTH_PX
+        if self.x > right_limit:
+            self.x = 2 * right_limit - self.x
+            self.dir = -1
+        elif self.x < left_limit:
+            self.x = 2 * left_limit - self.x
+            self.dir = 1
 
     def draw(self):
         left, bottom, w, h, ox, oy = FRAMES[int(self.frame)]
-        # 크기를 줄이면 앵커 오프셋도 같은 비율로 줄여야 눈 위치가 유지된다
+        # 원본 그림은 오른쪽을 보고 있다. 왼쪽으로 날 때는 좌우 반전('h')하고,
+        # 그림이 뒤집히면 눈에서 사각형 중심까지의 가로 오프셋도 뒤집혀야 하므로
+        # ox 에 dir 을 곱한다. (크기를 줄인 만큼 오프셋도 BIRD_SCALE 배)
+        flip = '' if self.dir == 1 else 'h'
         Bird.image.clip_composite_draw(
-            left, bottom, w, h, 0, '',
-            self.x + ox * BIRD_SCALE, self.y + oy * BIRD_SCALE,
+            left, bottom, w, h, 0, flip,
+            self.x + self.dir * ox * BIRD_SCALE, self.y + oy * BIRD_SCALE,
             w * BIRD_SCALE, h * BIRD_SCALE)
