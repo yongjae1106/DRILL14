@@ -67,16 +67,17 @@ BEAK_LENGTH_PX = 57 * BIRD_SCALE
 class Bird:
     image = None
 
-    def __init__(self, x=800, y=400, dir=1):
+    def __init__(self, x=800, y=400, dir=1, start_frame=0.0, flap_rate=1.0):
         if Bird.image is None:
             Bird.image = load_image('bird_animation.png')
         self.x, self.y = x, y
-        self.dir = dir          # 1: 오른쪽, -1: 왼쪽
-        self.frame = 0.0
+        self.dir = dir                      # 1: 오른쪽, -1: 왼쪽
+        self.frame = start_frame            # 날갯짓 시작 위상 (0 ~ 14)
+        self.frames_per_second = FRAMES_PER_SECOND * flap_rate   # 개체별 날갯짓 빈도
 
     def update(self):
         dt = game_framework.frame_time
-        self.frame = (self.frame + FRAMES_PER_SECOND * dt) % FRAMES_PER_ACTION
+        self.frame = (self.frame + self.frames_per_second * dt) % FRAMES_PER_ACTION
         self.x += self.dir * FLY_SPEED_PPS * dt
 
         # 좌우 반복 비행: 부리 끝이 화면 끝에 닿으면 방향 전환.
