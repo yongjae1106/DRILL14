@@ -70,8 +70,14 @@ def main(path):
     pitch = round((eye0[-1] - eye0[0]) / (COLS - 1))
     print('row0 iris x:', [round(e, 1) for e in eye0], '-> pitch =', pitch)
 
-    # 행 밴드: 위쪽 경계는 측정된 내용 구간 기준 (행2는 날개 끝이 행1 바로 아래부터 시작)
-    bands = [(0, 180), (180, 337), (337, h)]
+    # 행 밴드: 측정된 내용 구간 사이 '빈 공간의 한가운데'에서 자른다.
+    # (균등 그리드 경계 337 로 자르면 행1 날개 끝 337~339 가 행2 프레임에 섞인다)
+    bands = []
+    for k, (start, end) in enumerate(row_runs):
+        top = 0 if k == 0 else (row_runs[k - 1][1] + start) // 2
+        bottom = h if k == len(row_runs) - 1 else (end + row_runs[k + 1][0]) // 2
+        bands.append((top, bottom))
+    print('row bands:', bands)
 
     print('\nFRAMES = (')
     for i in range(FRAME_COUNT):

@@ -2,10 +2,29 @@ from pico2d import load_image
 
 import game_framework
 
-# 스프라이트 시트: 5열 x 3행, 총 14프레임(마지막 칸은 비어 있음)
-FRAME_COLS = 5
-FRAME_ROWS = 3
-FRAMES_PER_ACTION = 14
+# bird_animation.png 실측 프레임 테이블 (tools/analyze_bird_sheet.py 출력)
+# 시트를 균등 그리드(183.6 x 168.67)로 자르면 날개가 칸 경계에 걸리므로,
+# 프레임마다 실제 그림이 차지하는 사각형을 픽셀 단위로 측정해서 사용한다.
+#   - 열 간격은 183.6 이 아니라 182px (눈 위치로 측정)
+#   - 프레임마다 날개 모양이 달라 클립 크기도 서로 다름
+# (left, bottom, width, height) : pico2d 좌표계(이미지 왼쪽 아래가 원점)
+FRAMES = (
+    ( 34, 362, 146, 143),  # 0  날개 위로 (상승 끝)
+    (216, 363, 146, 141),  # 1
+    (398, 364, 146, 130),  # 2
+    (555, 367, 171, 122),  # 3  날개 앞으로 내려치기 시작
+    (728, 370, 182,  88),  # 4  날개 수평
+    ( 34, 171, 146, 118),  # 5  날개 아래로 (하강 끝)
+    (216, 166, 146, 124),  # 6
+    (398, 170, 146, 120),  # 7
+    (580, 180, 146, 109),  # 8
+    (762, 177, 146, 110),  # 9
+    ( 34,   6, 146, 108),  # 10
+    (216,   6, 146, 106),  # 11
+    (376,  23, 168,  88),  # 12 날개 다시 들어올림
+    (546,  22, 180, 114),  # 13
+)
+FRAMES_PER_ACTION = len(FRAMES)
 
 # 1초에 재생할 프레임 수 (frame_time 기반 -> 컴퓨터 성능과 무관한 재생 속도)
 FRAMES_PER_SECOND = 14.0
@@ -24,11 +43,5 @@ class Bird:
         self.frame = (self.frame + FRAMES_PER_SECOND * game_framework.frame_time) % FRAMES_PER_ACTION
 
     def draw(self):
-        # 균등 그리드로 칸을 나눔 (918/5 = 183.6, 506/3 = 168.67)
-        cell_w = Bird.image.w // FRAME_COLS
-        cell_h = Bird.image.h // FRAME_ROWS
-        index = int(self.frame)
-        col, row = index % FRAME_COLS, index // FRAME_COLS
-        # pico2d 는 아래쪽이 y=0 이므로 위쪽 행부터 읽으려면 뒤집어야 한다
-        bottom = Bird.image.h - (row + 1) * cell_h
-        Bird.image.clip_draw(col * cell_w, bottom, cell_w, cell_h, self.x, self.y)
+        left, bottom, w, h = FRAMES[int(self.frame)]
+        Bird.image.clip_draw(left, bottom, w, h, self.x, self.y)
