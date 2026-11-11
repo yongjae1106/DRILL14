@@ -34,8 +34,23 @@ FRAMES = (
 )
 FRAMES_PER_ACTION = len(FRAMES)
 
-# 1초에 재생할 프레임 수 (frame_time 기반 -> 컴퓨터 성능과 무관한 재생 속도)
-FRAMES_PER_SECOND = 14.0
+
+# ---------------------------------------------------------------------------
+# 실제 단위 기반 크기 / 날갯짓 속도  (boy.py 와 같은 축척: 10px = 30cm)
+# ---------------------------------------------------------------------------
+PIXEL_PER_METER = (10.0 / 0.3)
+
+# 새의 몸길이(부리~꼬리) 1.5m 로 설정. 시트에서 몸길이는 146px(날개를 접은
+# 프레임의 폭)이므로 화면 크기 50px 이 되도록 축소 비율을 계산한다.
+BIRD_SIZE_M = 1.5
+BIRD_BODY_PX_IN_SHEET = 146
+BIRD_SCALE = BIRD_SIZE_M * PIXEL_PER_METER / BIRD_BODY_PX_IN_SHEET
+
+# 14프레임 = 날갯짓 1회(위로 든 날개 -> 내려치기 -> 다시 들어올리기).
+# 이 크기의 새는 초당 약 2~3회 날갯짓하므로 2회/초로 설정.
+# 1초에 재생할 프레임 수 = 초당 날갯짓 수 x 날갯짓 1회당 프레임 수
+FLAPS_PER_SECOND = 2.0
+FRAMES_PER_SECOND = FLAPS_PER_SECOND * FRAMES_PER_ACTION   # 28 fps
 
 
 class Bird:
@@ -52,4 +67,8 @@ class Bird:
 
     def draw(self):
         left, bottom, w, h, ox, oy = FRAMES[int(self.frame)]
-        Bird.image.clip_draw(left, bottom, w, h, self.x + ox, self.y + oy)
+        # 크기를 줄이면 앵커 오프셋도 같은 비율로 줄여야 눈 위치가 유지된다
+        Bird.image.clip_composite_draw(
+            left, bottom, w, h, 0, '',
+            self.x + ox * BIRD_SCALE, self.y + oy * BIRD_SCALE,
+            w * BIRD_SCALE, h * BIRD_SCALE)
